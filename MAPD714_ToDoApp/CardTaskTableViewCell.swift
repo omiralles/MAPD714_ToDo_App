@@ -13,6 +13,8 @@ class CardTaskTableViewCell: UITableViewCell {
     @IBOutlet weak var dayTask: UILabel!
     @IBOutlet weak var hourTask: UILabel!
     @IBOutlet weak var imageTask: UIImageView!
+    @IBOutlet weak var descriptionTask: UILabel!
+    
     
     override func awakeFromNib() {
         super.awakeFromNib()

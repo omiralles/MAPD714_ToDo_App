@@ -20,6 +20,7 @@ class ViewController: UIViewController {
     
     @IBOutlet var tableView: UITableView!
     
+    //Store categories and images
     struct category {
         var name: String
         var image: UIImage
@@ -29,7 +30,7 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        self.title = "Favorites"
+        self.title = "List categories"
     
         //Delegate and datasource for tableView
         tableView.delegate = self
