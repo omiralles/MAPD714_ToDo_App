@@ -2,39 +2,45 @@
 //  TaskListViewController.swift
 //  MAPD714_ToDoApp
 //
+// Student Name: Carlos Hernandez Galvan
+// Student ID: 301290263
+//
+// Student Name: Oscar Miralles Fernandez
+// Student ID: 301250756
+//
 //  ViewController to show To Do list tasks.
 //  Use a tableView with custom cell.
 //
+//  Class to show the to do list tasks
 
 import UIKit
-import SQLite3
+//import SQLite3
 
 class TaskListViewController: UIViewController {
 
     @IBOutlet var tableView: UITableView!
     
     //Task list information to whow in the tableView
-    struct taskInfo {
-        var image: UIImage
-        var name: String
-        var day: String
-        var hour: String
-        var done: Bool
-        var id: Int
-        var description: String
-    }
-    var tasksList = [taskInfo]()
+    var tasksList: [TaskList] = []
+    
+    // Database instance
+    var db:DBManagement = DBManagement()
     
     let userDefaults = UserDefaults.standard
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-
+        
+        let listKey = userDefaults.integer(forKey: "ListId")
+        
+        //Remove data
         tasksList.removeAll()
         
         //Fetch Data
-        fetchData()
+        tasksList = db.fetchTaskListData(listKey: listKey)
         
+        
+        //Reload tableView
         self.tableView.reloadData()
     }
     
@@ -58,31 +64,40 @@ class TaskListViewController: UIViewController {
         navigationController?.pushViewController(vc, animated: true)
     }
     
-    //Assign data to the task list
-    func fetchData() {
-        let listKey = userDefaults.integer(forKey: "ListId")
+    //Function to delete a task
+    func deleteTask(listId: Int, taskId: Int, name: String)
+    {
+        //Create alert
+        let createOkCancelAlert = UIAlertController(title: "Delete task", message: "Are you sure do you want delete \(name) task?", preferredStyle: UIAlertController.Style.alert)
         
-        let selectStatmentString = "SELECT TaskName, TaskDay, TaskHour, TaskIsDone, TaskId, TaskDescription FROM Tasks WHERE ListId = '\(listKey)';"
-        
-        var selectStatmentQuery: OpaquePointer?
-        
-        if sqlite3_prepare_v2(dbQueque, selectStatmentString, -1, &selectStatmentQuery, nil) == SQLITE_OK {
-            
-            while sqlite3_step(selectStatmentQuery) == SQLITE_ROW {
-                if (Int(String(cString: sqlite3_column_text(selectStatmentQuery, 3))) == 0) {
-                    tasksList.append(taskInfo(image: UIImage(named: "Unchecked")!, name: String(String(cString: sqlite3_column_text(selectStatmentQuery, 0))),
-                                           day: String(String(cString: sqlite3_column_text(selectStatmentQuery, 1))) ,
-                                              hour: String(String(cString: sqlite3_column_text(selectStatmentQuery, 2))), done: Bool(String(cString: sqlite3_column_text(selectStatmentQuery, 3))) ?? false, id: Int(String(cString: sqlite3_column_text(selectStatmentQuery, 4))) ?? 0, description: String(String(cString: sqlite3_column_text(selectStatmentQuery, 5)))))
-                }
-                else {
-                    tasksList.append(taskInfo(image: UIImage(named: "checked")!, name: String(String(cString: sqlite3_column_text(selectStatmentQuery, 0))),
-                                           day: String(String(cString: sqlite3_column_text(selectStatmentQuery, 1))) ,
-                                              hour: String(String(cString: sqlite3_column_text(selectStatmentQuery, 2))), done: Bool(String(cString: sqlite3_column_text(selectStatmentQuery, 3))) ?? false, id: Int(String(cString: sqlite3_column_text(selectStatmentQuery, 4))) ?? 0, description: String(String(cString: sqlite3_column_text(selectStatmentQuery, 5)))))
-                }
-                    
+        let OkAction = UIAlertAction(title: "Ok", style: .default) { [self] (action:UIAlertAction!) in
+            //Delete task
+            if (db.deleteTask(listId: listId, taskId: taskId))
+            {
+                self.tasksList.removeAll()
+                self.tasksList = db.fetchTaskListData(listKey: listId)
+                self.tableView.reloadData()
             }
+        }
+        createOkCancelAlert.addAction(OkAction)
+        
+        let cancelAction = UIAlertAction(title: "Cancel", style: .default) { (action:UIAlertAction!) in
             
-            sqlite3_finalize(selectStatmentQuery)
+        }
+        createOkCancelAlert.addAction(cancelAction)
+        
+        self.present(createOkCancelAlert, animated: true, completion: nil)
+    }
+    
+    //Function to update the task status
+    func updateTask(listId: Int, taskId: Int, value: Int)
+    {
+        //Update task
+        if (db.updateTask(listId: listId, taskId: taskId, value: value))
+        {
+                self.tasksList.removeAll()
+                self.tasksList = db.fetchTaskListData(listKey: listId)
+                self.tableView.reloadData()
         }
     }
     
@@ -109,15 +124,97 @@ extension TaskListViewController: UITableViewDataSource {
         return 1
     }
     
+    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return tasksList.count
     }
     
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        //Get the keys
+        let listKey = userDefaults.integer(forKey: "ListId")
+        
+        //Show check/uncheck action on slide
+        if (tasksList[indexPath.row].done != 0){
+            let unCheck = UIContextualAction(style: .normal, title: "Uncheck") { (action, view, completion) in
+                //Update task undone
+                self.updateTask(listId: listKey, taskId: self.tasksList[indexPath.row].id, value: 0)
+                
+                completion(true)
+            }
+            unCheck.image = UIImage(named: "Unchecked")
+            unCheck.backgroundColor = .systemYellow
+            
+            //Add delete action on complete slide
+            let delete = UIContextualAction(style: .normal, title: "Delete") { (action, view, completion) in
+               //Delete a task
+                self.deleteTask(listId: listKey, taskId: self.tasksList[indexPath.row].id, name: self.tasksList[indexPath.row].name)
+                
+                completion(true)
+            }
+            delete.image = UIImage(named: "bin")
+            delete.backgroundColor = .systemYellow
+            
+            let config = UISwipeActionsConfiguration(actions: [delete, unCheck])
+            config.performsFirstActionWithFullSwipe = true
+            
+            return config
+        }
+        else {
+            let check = UIContextualAction(style: .normal, title: "Check") { (action, view, completion) in
+                //Update task done
+                self.updateTask(listId: listKey, taskId: self.tasksList[indexPath.row].id, value: 1)
+                completion(true)
+            }
+            check.image = UIImage(named: "checked")
+            check.backgroundColor = .systemYellow
+            
+            // Add delete action on complete slide
+            let delete = UIContextualAction(style: .normal, title: "Delete") { (action, view, completion) in
+                //Delete task
+                self.deleteTask(listId: listKey, taskId: self.tasksList[indexPath.row].id, name: self.tasksList[indexPath.row].name)
+                
+                completion(true)
+            }
+            delete.image = UIImage(named: "bin")
+            delete.backgroundColor = .systemYellow
+            
+            let config = UISwipeActionsConfiguration(actions: [delete, check])
+            config.performsFirstActionWithFullSwipe = true
+            
+            return config
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, leadingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        //Action to go to edit task information on slide
+        let edit = UIContextualAction(style: .normal, title: "Edit") { (action, view, completion) in
+            self.userDefaults.set(self.tasksList[indexPath.row].id, forKey: "taskId")
+            
+            //Load the view to display detailed task information.
+            let vc = self.storyboard?.instantiateViewController(withIdentifier: "TaskCardView") as! TaskCardViewController
+            
+            
+            self.navigationController?.pushViewController(vc, animated: true)
+            
+            completion(true)
+        }
+        edit.image = UIImage(named: "edit_icon")
+        edit.backgroundColor =  .systemBlue
+     
+        let config = UISwipeActionsConfiguration(actions: [edit])
+        config.performsFirstActionWithFullSwipe = true
+     
+        return config
+    }
+    
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        //Load demo information in our custom cell.
+        //Load information in our custom cell.
         let cell = Bundle(for:CardTaskTableViewCell.self).loadNibNamed("CardTaskTableViewCell", owner: self,options:nil)?.first as! CardTaskTableViewCell
         
-        cell.imageTask.image = tasksList[indexPath.row].image
+        cell.imageTask.image = UIImage(named: tasksList[indexPath.row].image)
         cell.nameTask.text = tasksList[indexPath.row].name
         cell.hourTask.text = tasksList[indexPath.row].hour
         cell.dayTask.text = tasksList[indexPath.row].day

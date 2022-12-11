@@ -2,7 +2,11 @@
 //  SceneDelegate.swift
 //  MAPD714_ToDoApp
 //
-//  Created by Oscar Miralles on 2022-11-12.
+// Student Name: Carlos Hernandez Galvan
+// Student ID: 301290263
+//
+// Student Name: Oscar Miralles Fernandez
+// Student ID: 301250756
 //
 
 import UIKit

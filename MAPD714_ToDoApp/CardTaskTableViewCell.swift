@@ -2,8 +2,15 @@
 //  CardTaskTableViewCell.swift
 //  MAPD714_ToDoApp
 //
+// Student Name: Carlos Hernandez Galvan
+// Student ID: 301290263
+//
+// Student Name: Oscar Miralles Fernandez
+// Student ID: 301250756
+//
 //  Custom cell view to show the task list in a To Do list.
 //
+//  Personalized Cell to see task information
 
 import UIKit
 
